@@ -4,7 +4,7 @@ Este projeto realiza a análise de tendências climáticas utilizando o teste de
 
 ## Funcionalidades
 
-	- Processamento de dados NetCDF**: Carrega e processa grandes arquivos climáticos NetCDF, selecionando apenas a região de interesse e convertendo os dados de precipitação de hora em hora para valores mensais.
+	- Processamento de dados NetCDF**: Carrega e processa grandes arquivos climáticos NetCDF, selecionando apenas a região de interesse e convertendo os dados de precipitação para valores mensais.
 	- Cálculo de Mann-Kendall: Implementa o teste de Mann-Kendall em séries temporais de precipitação para identificar tendências estatisticamente significativas.
 	- Visualização Comparativa Gera mapas comparativos de duas simulações climáticas (RCP 4.5 e RCP 8.5), mostrando tendências de Tau e áreas onde as tendências são estatisticamente significativas.
 	- Geoprocessamento: Usa dados de shapefiles para incluir o limite da bacia e uma linha ferroviária em visualizações de mapas.
