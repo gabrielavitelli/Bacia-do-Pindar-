@@ -1,0 +1,27 @@
+# Análise de Precipitação e Tendências Climáticas com Teste de Mann-Kendall
+
+Este projeto realiza a análise de tendências climáticas utilizando o teste de Mann-Kendall em dados de precipitação mensal para dois cenários de emissão: RCP 4.5 e RCP 8.5. O script carrega e processa dados climáticos, calcula o teste de Mann-Kendall em cada grid point e exibe comparações visuais das tendências de longo prazo para dois cenários de mudança climática.
+
+## Funcionalidades
+
+	- Processamento de dados NetCDF**: Carrega e processa grandes arquivos climáticos NetCDF, selecionando apenas a região de interesse e convertendo os dados de precipitação de hora em hora para valores mensais.
+	- Cálculo de Mann-Kendall: Implementa o teste de Mann-Kendall em séries temporais de precipitação para identificar tendências estatisticamente significativas.
+	- Visualização Comparativa Gera mapas comparativos de duas simulações climáticas (RCP 4.5 e RCP 8.5), mostrando tendências de Tau e áreas onde as tendências são estatisticamente significativas.
+	- Geoprocessamento: Usa dados de shapefiles para incluir o limite da bacia e uma linha ferroviária em visualizações de mapas.
+
+## Requisitos
+
+- Python 3.8+
+- Bibliotecas:
+  - `xarray`
+  - `numpy`
+  - `matplotlib`
+  - `geopandas`
+  - `cartopy`
+  - `dask`
+  - `pymannkendall`
+
+Você pode instalar todas as dependências com:
+
+bash
+pip install -r requirements.txt
