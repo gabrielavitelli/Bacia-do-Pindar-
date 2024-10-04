@@ -1,0 +1,149 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Sep 17 21:18:41 2024
+
+@author: gabri
+"""
+
+import xarray as xr
+import numpy as np
+import matplotlib.pyplot as plt
+import glob
+import geopandas as gpd
+import pymannkendall as mk
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
+from dask.diagnostics import ProgressBar
+
+# Função para calcular o teste de Mann-Kendall
+def calcular_mann_kendall(series):
+    if np.all(np.isnan(series)):
+        return None
+    result = mk.original_test(series)
+    return result.Tau if result else np.nan
+
+# Função para calcular o p-value do teste de Mann-Kendall
+def calcular_p_value(series):
+    if np.all(np.isnan(series)):
+        return np.nan
+    result = mk.original_test(series)
+    return result.p if result else np.nan
+
+# Leitura do shapefile usando geopandas
+shapefile_path = "caminho_para_seu_arquivo/bacia_pindare_srtm.shp"
+gdf = gpd.read_file(shapefile_path)
+if gdf.crs != 'EPSG:4326':
+    gdf = gdf.to_crs(epsg=4326)
+
+# Leitura dos dados NetCDF
+file_pattern ="caminho_para_seu_arquivo/pr*.nc"
+
+files = glob.glob(file_pattern)
+ds = xr.open_mfdataset(files, combine='by_coords')
+dado_completo=ds
+#ds = dado_completo.sel(time=slice('2020', '2060'))
+# Seleção da área de interesse
+bbox = gdf.total_bounds
+lon_min, lat_min, lon_max, lat_max = bbox
+lon_min -= 0.5
+lon_max+=0.1
+lat_max+=0.1
+lat_mask = (ds.lat >= lat_min) & (ds.lat <= lat_max)
+lon_mask = (ds.lon >= lon_min) & (ds.lon <= lon_max)
+
+# Combine as máscaras computadas
+pr_clipped = ds.pr.where((lat_mask & lon_mask).compute(), drop=True)
+
+#pr_clipped = ds.pr.where(lat_mask & lon_mask, drop=True)
+
+# Converter precipitação para valores diários
+sim = pr_clipped.resample(time='1D').sum(dim='time') * 10800
+sim.attrs['units'] = 'mm/day'
+
+# Resample para dados mensais
+monthly_data = sim.resample(time='M').sum()
+
+# List to store Mann-Kendall results
+tau_values_monthly = []
+p_values_monthly = []
+from dask.diagnostics import ProgressBar
+with ProgressBar():
+    # Loop para calcular o Mann-Kendall para cada mês
+    for month in range(1, 13):
+        monthly_subset = monthly_data.sel(time=monthly_data['time.month'] == month)
+        monthly_subset = monthly_subset.compute()
+        tau_values = np.empty((monthly_subset.shape[1], monthly_subset.shape[2]))
+        p_values = np.empty((monthly_subset.shape[1], monthly_subset.shape[2]))
+        
+        # Aplicando o teste de Mann-Kendall para cada ponto de grade
+        for i in range(monthly_subset.shape[1]):
+            for j in range(monthly_subset.shape[2]):
+                series = monthly_subset[:, i, j].values
+                tau_values[i, j] = calcular_mann_kendall(series)
+                p_values[i, j] = calcular_p_value(series)
+        
+        tau_values_monthly.append(tau_values)
+        p_values_monthly.append(p_values)
+
+# Definindo vmin e vmax para a colorbar global
+vmin = np.nanmin([np.nanmin(t) for t in tau_values_monthly])
+vmax = np.nanmax([np.nanmax(t) for t in tau_values_monthly])
+
+# Plotar 12 figuras, uma para cada mês, com uma única colorbar
+fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(16, 10), subplot_kw={'projection': ccrs.PlateCarree()})
+
+plt.suptitle('MK - RegHad RCP8.5 - mensal (2020-2060)', fontsize=18)
+plt.figure(dpi=150)  # Higher DPI for better resolution
+
+fig.subplots_adjust(right=0.85)
+cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])  # Eixo para a colorbar
+
+for month, ax in enumerate(axes.flat, start=1):
+    tau_values = tau_values_monthly[month-1]
+    p_values = p_values_monthly[month-1]
+    
+    # Plotando os dados de Mann-Kendall para o mês correspondente
+    im = ax.pcolormesh(
+        pr_clipped.lon, pr_clipped.lat, tau_values, cmap='coolwarm_r', shading='auto',
+        vmin=vmin, vmax=vmax, transform=ccrs.PlateCarree()
+    )
+
+    # Apply hatches using pcolormesh with the mask
+    ax.pcolormesh(
+        pr_clipped.lon, pr_clipped.lat, significance_mask, cmap='gray', shading='auto',
+        hatch='//', alpha=0, transform=ccrs.PlateCarree()
+    )
+    significance_mask = p_values < 0.05  # Mask for significant p-values . / ...
+    ax.contourf(pr_clipped.lon, pr_clipped.lat, significance_mask, levels=[0.5, 1], hatches=['/'], colors='none', transform=ccrs.PlateCarree())  # Adding hatching
+
+    
+    # Adicionando shapefile ao gráfico
+    gdf.boundary.plot(ax=ax, edgecolor='red', linewidth=1, transform=ccrs.PlateCarree())
+    ax.coastlines()
+    ax.add_feature(cfeature.BORDERS, linestyle=':')
+    ax.set_title(f'Mês: {month}', fontweight='bold')
+
+    #if month == 1: 
+    gridlines = ax.gridlines(draw_labels=True)
+    
+    # Ajustando os rótulos para aparecer apenas no lado esquerdo e embaixo
+    gridlines.top_labels = False
+    gridlines.right_labels = False
+
+    # Ajustando os rótulos do lado esquerdo e embaixo
+    gridlines.left_labels = True
+    gridlines.bottom_labels = True
+
+# Adicionar uma colorbar comum para todos os subplots
+vmin, vmax = -0.4, 0.3
+levels = np.linspace(vmin, vmax, num=8)  # Definindo 8 níveis/ticks
+
+# Criando a normalização baseada nos níveis (ticks)
+norm = Normalize(vmin=vmin, vmax=vmax)
+
+# Supondo que o gráfico foi criado com pcolormesh ou imshow
+im.set_norm(norm) 
+cbar=fig.colorbar(im, cax=cbar_ax, orientation='vertical', label='Mann-Kendall Tau', format='%.2f', ticks=levels)#.ax.tick_params(labelsize=16)
+plt.show()
+
+from matplotlib.colors import Normalize
