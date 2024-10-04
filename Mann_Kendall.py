@@ -19,12 +19,12 @@ def calcular_mann_kendall(series):
     return result
 
 # Carrega o shapefile usando geopandas
-shapefile_path = "C:/Users/Usuario/OneDrive/SRTM BACIA/bacia_pindare_srtm.shp"
+shapefile_path = "caminho_para_seu_arquivo/bacia_pindare_srtm.shp"
 gdf = gpd.read_file(shapefile_path)
 
 if gdf.crs != 'EPSG:4326':
     gdf = gdf.to_crs(epsg=4326)
-ferrovia_path = "C:/Users/Usuario/OneDrive/dados/arqgis/shapefiles/shp/EFC/extensao_efc_shp.shp"
+ferrovia_path = "caminho_para_seu_arquivo/extensao_efc_shp.shp"
 ferrovia = gpd.read_file(ferrovia_path)
 if ferrovia.crs is None:
     ferrovia.set_crs(epsg=4326, inplace=True)
@@ -60,8 +60,8 @@ def processar_dados(file_pattern):
     return precip_mensal, precip_mensal_np
 
 # Carrega os dois cenários
-file_pattern_rcp45 = "E:/GeoInfra/dados/RegCM4/RegHad/RCP45/3HR/pr_SAM-22_MPI-ESM-MR_rcp45_r1i1p1_ICTP-RegCM4-svn_v0_3hr_*.nc"
-file_pattern_rcp85 = "E:/GeoInfra/dados/RegCM4/RegHad/RCP85/3hr/pr/pr_SAM-22_HadGEM2-ES_rcp85_r1i1p1_ICTP-RegCM4-svn_v0_3hr_*.nc"
+file_pattern_rcp45 = caminho_para_seu_arquivo/pr*.nc"
+file_pattern_rcp85 = "caminho_para_seu_arquivo/pr*.nc"
 
 precip_mensal_rcp45, precip_mensal_np_rcp45 = processar_dados(file_pattern_rcp45)
 precip_mensal_rcp85, precip_mensal_np_rcp85 = processar_dados(file_pattern_rcp85)
